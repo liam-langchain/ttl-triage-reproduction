@@ -10,7 +10,6 @@ license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph>=0.2.6",
-    "langgraph-api==0.2.130",
     "langgraph-cli>=0.1.74",
     "python-dotenv>=1.0.1",
 ]
