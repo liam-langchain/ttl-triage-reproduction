@@ -1,0 +1,60 @@
+name: Deploy TTL Triage to LangGraph Platform
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      
+    - name: Install dependencies
+      run: uv sync
+      
+    - name: Deploy to LangGraph Platform Cloud
+      env:
+        LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+        LANGGRAPH_CLOUD_API_KEY: ${{ secrets.LANGGRAPH_CLOUD_API_KEY }}
+      run: |
+        # Deploy to LangGraph Platform Cloud
+        uv run langgraph up \
+          --deployment-name "ttl-triage-carlos-reproduction" \
+          --git-repo "${{ github.repository }}" \
+          --git-branch "${{ github.ref_name }}" \
+          --wait
+          
+    - name: Run TTL Configuration Test
+      env:
+        LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+        LANGGRAPH_CLOUD_API_KEY: ${{ secrets.LANGGRAPH_CLOUD_API_KEY }}
+        DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+      run: |
+        # Wait for deployment to be ready
+        sleep 30
+        
+        # Run the TTL assistant configuration test
+        uv run python test_carlos_ttl_issue.py
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          test-results.log
+          deployment-info.json
